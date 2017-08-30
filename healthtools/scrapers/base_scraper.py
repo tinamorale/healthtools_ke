@@ -128,9 +128,10 @@ class Scraper(object):
                    progressbar.Bar(marker='#', left='[', right=']'),
                    ' (', progressbar.ETA(), ' ', progressbar.FileTransferSpeed(), ') '
                    ]
-        pbar = progressbar.ProgressBar(widgets=widgets).start()
+        pbar = progressbar.ProgressBar(
+            maxval=self.site_pages_no + 1, widgets=widgets).start()
 
-        for page_num in pbar(range(1, self.site_pages_no + 1)):
+        for page_num in range(1, self.site_pages_no + 1):
             # Check if is NHIF and if so just use page_num else format site_url
             nhif = set(re.sub(r"(\w)([A-Z])", r"\1 \2", type(self).__name__).lower().split()) &\
                 set(NHIF_SERVICES)
@@ -146,6 +147,10 @@ class Scraper(object):
 
             self.results.extend(results)
             self.results_es.extend(results_es)
+            
+            pbar.update(page_num+1)
+            time.sleep(0.05)
+        pbar.finish()
 
         if self.results:
             self.archive_data(json.dumps(self.results))
