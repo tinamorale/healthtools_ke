@@ -36,7 +36,7 @@ Clone the repo from Github by running `$ git clone git@github.com:CodeForAfrica-
 
 Change directory into the package `$ cd healthtools_ke`.
 
-Install the dependencies by running `$ pip install requirements.txt`.
+Install the dependencies by running `$ pip install - r requirements.txt`.
 
 You can set the required environment variables like so
 
