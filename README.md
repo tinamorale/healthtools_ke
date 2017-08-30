@@ -94,7 +94,7 @@ In development, instead of scraping entire websites, you can scrape only a small
 
 Set the `SMALL_BATCH`, `SMALL_BATCH_HF` (for health facilities scrapers), and `SMALL_BATCH_NHIF` (for NHIF scrapers) in the config file that will ensure the scraper doesn't scrape entire sites but just the number of pages that you would like it to scrape defined by this variable.
 
-Use `$ python scraper.py small_batch` to run the scrapers.
+Use `$ python scraper.py --small_batch` to run the scrapers.
 
 
 ## Tests
