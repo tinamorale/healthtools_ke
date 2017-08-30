@@ -122,11 +122,12 @@ class Scraper(object):
             )
             return
 
-        widgets = [
-            ' [', progressbar.Timer(), '] ',
-            progressbar.Bar(marker='#', left='[', right=']'),
-            ' (', progressbar.ETA(), ' ', progressbar.FileTransferSpeed(), ') '
-        ]
+        scraper_name = re.sub(r"(\w)([A-Z])", r"\1 \2", type(self).__name__)
+        widgets = [' [', scraper_name, ': '
+                   progressbar.Timer(), '] ',
+                   progressbar.Bar(marker='#', left='[', right=']'),
+                   ' (', progressbar.ETA(), ' ', progressbar.FileTransferSpeed(), ') '
+                   ]
         pbar = progressbar.ProgressBar(widgets=widgets).start()
 
         for page_num in pbar(range(1, self.site_pages_no + 1)):
