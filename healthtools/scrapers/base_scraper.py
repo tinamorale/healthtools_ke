@@ -112,9 +112,13 @@ class Scraper(object):
                 exists = False
 
         if exists:
-            return ("Error (BucketAlreadyExists): The requested bucket name %s "
-                    "is not available. Select a different name and try again." % bucket_name,
-                    self.create_keys(exists, bucket_name))
+            create_bucket_msg = ("Error (BucketAlreadyExists): "
+                                 "The requested bucket name %s already exists."
+                                 "Select a different name and try again." % bucket_name)
+
+            # Create keys and files
+            create_key_msg = self.create_keys(
+                _s3, exists, bucket_name, DATA_DIR)
         else:
             # Create S3 Bucket if not exist
             response = self.s3.create_bucket(
@@ -124,11 +128,17 @@ class Scraper(object):
                     'LocationConstraint': AWS["region_name"]},
             )
             exists = True
-            return (response["ResponseMetadata"]["HTTPStatusCode"],
-                    self.create_keys(exists, bucket_name)
-                    )
+            create_bucket_msg = response["ResponseMetadata"]["HTTPStatusCode"]
 
-    def create_keys(self, exists, bucket_name):
+            # Create keys and files
+            create_key_msg = self.create_keys(
+                _s3, exists, bucket_name, DATA_DIR)
+
+        msg = create_key_msg
+        msg["create_bucket_msg"] = create_bucket_msg
+        return msg
+
+    def create_keys(self, s3_object, exists, bucket_name, key):
         """
         Scraper checks or creates the bucket structure as expected.
         """
@@ -140,21 +150,26 @@ class Scraper(object):
                 # Returns some or all (up to 1000) of the objects in a bucket
                 response = self.s3.list_objects(Bucket=bucket_name)
 
-                s3_keys = None
+                s3_keys = []
                 if "Contents" in response:
                     s3_keys = [contents['Key']
                                for contents in response["Contents"]]
 
                 # Check if the key exists. If not create it.
-                if not s3_keys or DATA_DIR not in s3_keys:
+                if not s3_keys or key not in s3_keys:
                     new_key = self.s3.put_object(
                         ACL='private',
                         Bucket=bucket_name,
-                        Key=DATA_DIR,
+                        Key=key,
                     )
-                    return response["ResponseMetadata"]["HTTPStatusCode"]
+                    s3_keys += [key]
+
+                    create_key_msg = response["ResponseMetadata"]["HTTPStatusCode"]
                 else:
-                    return ("Key already exists. Select a different name and try again.")
+                    create_key_msg = "Key already exists. Select a different name and try again."
+
+                msg = {"create_key_msg": create_key_msg}
+                return msg
 
             except botocore.exceptions.ClientError as err:
                 print err
@@ -353,11 +368,14 @@ class Scraper(object):
             date = datetime.today().strftime("%Y%m%d")
             self.data_key = DATA_DIR + self.data_key
             self.data_archive_key = DATA_DIR + self.data_archive_key
-            self.handle_s3_objects(bucket_name=AWS["s3_bucket"])
 
             if AWS["s3_bucket"]:
+                # Check if bucket exists and has the expected file structure
+                self.handle_s3_objects(bucket_name=AWS["s3_bucket"])
+
                 old_etag = self.s3.get_object(
                     Bucket=AWS["s3_bucket"], Key=self.data_key)["ETag"]
+
                 new_etag = hashlib.md5(payload.encode("utf-8")).hexdigest()
                 if eval(old_etag) != new_etag:
                     file_obj = StringIO(payload.encode("utf-8"))
