@@ -20,6 +20,8 @@ from healthtools.config import (AWS, ES, SLACK, DATA_DIR,
 from healthtools.lib.json_serializer import JSONSerializerPython2
 
 from healthtools.handle_s3_objects import S3ObjectHandler
+from healthtools.slack_logger import (SlackHandler, SlackFormatter,
+                                      SlackLogFilter)
 
 
 class Scraper(object):
@@ -47,6 +49,7 @@ class Scraper(object):
         self.site_url = None
         self.site_pages_no = None
         self.fields = None
+        self.scraper_name = None
 
         self.doc_id = 1  # Id for each entry, to be incremented
         self.es_index = ES["index"]  # Elasticsearch index
@@ -98,9 +101,9 @@ class Scraper(object):
         '''
         This function works to display some output and run scrape_site()
         '''
-        scraper_name = re.sub(r"(\w)([A-Z])", r"\1 \2", type(self).__name__)
+        self.scraper_name = re.sub(r"(\w)([A-Z])", r"\1 \2", type(self).__name__)
 
-        _scraper_name = re.sub(" Scraper", "", scraper_name).lower()
+        _scraper_name = re.sub(" Scraper", "", self.scraper_name).lower()
         _scraper_name = re.sub(" ", "_", _scraper_name)
 
         if self.args.scraper and "doctors" in self.args.scraper:
@@ -124,7 +127,6 @@ class Scraper(object):
         This functions scrapes the entire website by calling each page.
         '''
         self.set_site_pages_no()
-
         if not self.site_pages_no:
             error = {
                 "ERROR": "scrape_site()",
@@ -381,47 +383,40 @@ class Scraper(object):
 
         response = None
         if SLACK["url"]:
-            try:
-                errors = {
-                    "author": message['ERROR'],
-                    "pretext": message['SOURCE'],
-                    "message": message['MESSAGE'],
-                }
-            except:
-                errors = {
-                    "pretext": "",
-                    "author": message,
-                    "message": message,
-                }
+            errors = {
+                "author": message['ERROR'],
+                "source": message['SOURCE'] if "SOURCE" in message else "",
+                "message": message['MESSAGE'],
+            }
 
-            response = requests.post(
-                SLACK["url"],
-                data=json.dumps({
-                    "attachments": [
-                        {
-                            "username": "Slack Logger",
-                            "author_name": "{}".format(errors["author"]),
-                            "color": "danger",
-                            "pretext": "[SCRAPER] New Alert for {} : {}".format(errors["author"], errors["pretext"]),
-                            "fields": [
-                                {
-                                    "title": "Message",
-                                    "value": "{}".format(errors["message"]),
-                                    "short": False
-                                },
-                                {
-                                    "title": "Machine Location",
-                                    "value": "{}".format(getpass.getuser()),
-                                    "short": True
-                                },
-                                {
-                                    "title": "Time",
-                                    "value": "{}".format(datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
-                                    "short": True},
-                            ]
-                        }
-                    ]
-                }),
-                headers={"Content-Type": "application/json"}
-            )
+            fields = [
+                {"title": "Author", "value": errors['author'], "short": 0},
+                {"title": "Source", "value": errors['source'], "short": 0},
+                {"title": "Message", "value": errors['message'], "short": 0},
+                {"title": "Machine Location",
+                 "value": getpass.getuser(),
+                 "short": 1
+                 },
+                {"title": "Time",
+                 "value": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                 "short": 1
+                 }
+            ]
+
+            logger = logging.getLogger(self.scraper_name)
+            logger.setLevel(logging.DEBUG)
+
+            sh = SlackHandler(
+                username='HealthTools Scraper',
+                url=SLACK["url"])
+            sh.setLevel(logging.DEBUG)
+
+            # Format the Slack message
+            sh.setFormatter(SlackFormatter())
+            logger.addHandler(sh)
+            sh.addFilter(SlackLogFilter())
+
+            logger.error(fields, extra={'notify_slack': True})
+            response = sh.response.status_code
+
         return response
