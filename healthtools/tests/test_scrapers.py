@@ -165,7 +165,7 @@ class TestScrapers(BaseTest):
                 }
         response = self.base_scraper.print_error(error)
         if SLACK["url"]:
-            self.assertEqual(response, 200)
+            self.assertEqual(response.status_code, 200)
         else:
             self.assertIsNone(response)
 

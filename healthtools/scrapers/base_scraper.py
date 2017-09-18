@@ -417,6 +417,6 @@ class Scraper(object):
             sh.addFilter(SlackLogFilter())
 
             logger.error(fields, extra={'notify_slack': True})
-            response = sh.response.status_code
+            response = sh.response
 
         return response
