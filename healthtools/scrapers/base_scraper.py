@@ -101,7 +101,8 @@ class Scraper(object):
         '''
         This function works to display some output and run scrape_site()
         '''
-        self.scraper_name = re.sub(r"(\w)([A-Z])", r"\1 \2", type(self).__name__)
+        self.scraper_name = re.sub(
+            r"(\w)([A-Z])", r"\1 \2", type(self).__name__)
 
         _scraper_name = re.sub(" Scraper", "", self.scraper_name).lower()
         _scraper_name = re.sub(" ", "_", _scraper_name)
@@ -368,13 +369,18 @@ class Scraper(object):
             self.print_error(error)
 
     def print_error(self, message):
-        '''
+        """
         Print error messages in the terminal.
         If slack webhook is set up, post the errors to Slack.
-        '''
+        message (dict): with keys
+            ERROR: Function that is failing
+            SOURCE: URL/sites to be scraped
+            MESSAGE: Error message/ description
+        """
 
         error = "- ERROR: " + message['ERROR']
-        source = ("- SOURCE: " + message['SOURCE']) if "SOURCE" in message else ""
+        source = ("- SOURCE: " + message['SOURCE']
+                  ) if "SOURCE" in message else ""
         error_msg = "- MESSAGE: " + message['MESSAGE']
         msg = "\n".join([error, source, error_msg])
 
@@ -389,6 +395,7 @@ class Scraper(object):
                 "message": message['MESSAGE'],
             }
 
+            # Slack message attachment
             fields = [
                 {"title": "Author", "value": errors['author'], "short": 0},
                 {"title": "Source", "value": errors['source'], "short": 0},
@@ -403,6 +410,7 @@ class Scraper(object):
                  }
             ]
 
+            # Use logging to log errors
             logger = logging.getLogger(self.scraper_name)
             logger.setLevel(logging.DEBUG)
 
@@ -417,6 +425,8 @@ class Scraper(object):
             sh.addFilter(SlackLogFilter())
 
             logger.error(fields, extra={'notify_slack': True})
+
+            # Slack response
             response = sh.response
 
         return response

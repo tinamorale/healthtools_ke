@@ -1,3 +1,7 @@
+# This is an adaptation of the python-slack-logger Python module by Code for Africa
+# See https://github.com/CodeForAfricaLabs/python-slack-logger
+
+
 import json
 import logging
 import requests
@@ -6,6 +10,8 @@ import re
 
 class SlackHandler(logging.StreamHandler):
     """
+    Python logging handler for Slack web hook integration
+
     url: Slack webhook
     channel: Set which channel you want to post to, e.g. "#general"
     username: The username that will post to Slack. Defaults to "Python logger"
@@ -25,6 +31,10 @@ class SlackHandler(logging.StreamHandler):
         self.response = None
 
     def emit(self, record):
+        """
+        Overides StreamHandler emit method
+        Log the specified logging record. If a formatter is specified, it is used to format the record
+        """
         if isinstance(self.formatter, SlackFormatter):
             payload = {
                 'attachments': [
@@ -53,7 +63,7 @@ class SlackHandler(logging.StreamHandler):
             if record.notify_slack:
                 payload = ret['payload']
 
-                # Slack seems require double quotes
+                # Slack seems to strictly require double quotes
                 payload = re.sub("\'", '"', payload)
                 payload = re.sub('"\[{', '[{', payload)
                 payload = re.sub(']"', ']', payload)
@@ -69,6 +79,10 @@ class SlackHandler(logging.StreamHandler):
 
 class SlackFormatter(logging.Formatter):
     def format(self, record):
+        """
+        Do formatting for a record - if a formatter is set, use it.
+        Otherwise, use the default formatter for the module
+        """
         ret = {}
         if record.levelname == 'INFO':
             ret['color'] = 'good'
